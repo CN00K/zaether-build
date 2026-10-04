@@ -106,11 +106,15 @@ final class AetherSpeechHost: NSObject, AVSpeechSynthesizerDelegate {
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
         recognitionRequest = nil
-        recognitionTask?.cancel()
-        recognitionTask = nil
         partialDebounce?.cancel()
         partialDebounce = nil
-        dictationListener = nil
+        // finish() lets the recognizer deliver its final result through the
+        // normal callback path (onFinalText -> stopDictation). cancel() would
+        // drop the accumulated transcript, losing everything the user said.
+        if let task = recognitionTask {
+            recognitionTask = nil
+            task.finish()
+        }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 

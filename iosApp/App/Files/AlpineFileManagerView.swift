@@ -460,7 +460,7 @@ private struct AlpineFileView: View {
 
     var body: some View {
         Group {
-            if model.isLoading || model.data == nil && model.errorMessage == nil {
+            if (model.isLoading || model.data == nil) && model.errorMessage == nil {
                 ProgressView()
             } else if let data = model.data, let image = UIImage(data: data) {
                 ScrollView([.horizontal, .vertical]) {

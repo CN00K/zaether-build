@@ -112,7 +112,8 @@ class TerminalKeyInputView: UIView, UITextInput {
         _markedRange = NSRange(location: NSNotFound, length: 0)
 
         if ctrlActive {
-            // Convert to control character
+            // Convert to control character. Match a-z case-insensitively so
+            // Shift/AutoCap does not silently corrupt Ctrl+letter semantics.
             if let firstChar = text.lowercased().first,
                let ascii = firstChar.asciiValue,
                ascii >= Character("a").asciiValue!,
@@ -123,7 +124,10 @@ class TerminalKeyInputView: UIView, UITextInput {
                 TerminalRedrawLog.log(String(format: "insertText ctrl='%@' dispatch=%.1fms", text, TerminalRedrawLog.nowMs() - t0))
                 return
             }
+            // Not representable as a control code: drop it and clear the
+            // modifier so the next keystroke is not polluted by stale Ctrl.
             onCtrlConsumed?()
+            return
         }
 
         if let data = text.data(using: .utf8) {

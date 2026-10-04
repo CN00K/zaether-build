@@ -464,6 +464,7 @@ class SharedPiBridgeClient(
                                 type = "abort",
                                 payload = buildJsonObject { put("request_id", requestId) },
                                 timeoutMillis = 2_000,
+                                startIfNeeded = false,
                                 abortOnCancellation = false,
                             )
                         }
@@ -726,7 +727,7 @@ class SharedPiBridgeClient(
         val id = frame.string("id")
         val request = stateMutex.withLock { pending[id] } ?: return
         when (frame.string("type")) {
-            "event" -> request.events.send(
+            "event" -> request.events.trySend(
                 frame.string("event") to
                     (frame["payload"] as? JsonObject ?: JsonObject(emptyMap()))
             )

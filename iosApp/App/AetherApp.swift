@@ -74,9 +74,6 @@ func makeInternetPermissionRequest() -> URLRequest {
 
 @main
 struct AetherIOSApp: App {
-    init() {
-        zzuuBridgeMain()
-    }
     @UIApplicationDelegateAdaptor(AetherAppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var presentsAlpineFileManager = false

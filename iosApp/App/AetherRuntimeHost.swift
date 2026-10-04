@@ -150,7 +150,7 @@ final class AetherRuntimeHost: NSObject, NativeRuntimeHost, UIDocumentPickerDele
                 // recover it before reporting readiness to shared UI and tools.
                 initialize(listener: RuntimeReadinessInitializationListener(
                     onReady: { listener.onSuccess(value: true) },
-                    onError: { listener.onError(message: $0) },
+                    onError: { listener.onError(message: $0) }
                 ))
             } catch {
                 onMain { listener.onError(message: error.localizedDescription) }
@@ -652,7 +652,7 @@ final class AetherRuntimeHost: NSObject, NativeRuntimeHost, UIDocumentPickerDele
                 listener.onError(message: "Unable to present the file picker.")
                 return
             }
-            filePickerMaximumBytes = maximumBytes
+            filePickerMaximumBytes = Int(maximumBytes)
             filePickerListener = listener
             let types: [UTType] = imagesOnly ? [.image] : [.item]
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
@@ -660,6 +660,10 @@ final class AetherRuntimeHost: NSObject, NativeRuntimeHost, UIDocumentPickerDele
             picker.allowsMultipleSelection = false
             presenter.present(picker, animated: true)
         }
+    }
+
+    func pickFile(imagesOnly: Bool, listener: NativePickedFileListener) {
+        pickFile(imagesOnly: imagesOnly, maximumBytes: 16 * 1024 * 1024, listener: listener)
     }
 
     func pickFiles(imagesOnly: Bool, listener: NativePickedFilesListener) {
@@ -763,7 +767,7 @@ final class AetherRuntimeHost: NSObject, NativeRuntimeHost, UIDocumentPickerDele
         return true
     }
 
-    func copyText(text: String) -> Bool {
+    func doCopyText(text: String) -> Bool {
         UIPasteboard.general.string = text
         return true
     }
@@ -1703,7 +1707,7 @@ private final class AetherBackgroundExecutionCoordinator {
             pendingCompletionSuccess = nil
             // iOS < 26 has no BGContinuedProcessingTask; the silent-audio
             // keep-alive is the only reliable way to avoid suspension.
-            if #unavailable(iOS 26.0, *) {
+            if #unavailable(iOS 26.0) {
                 BackgroundAudioKeepAlive.shared.start()
             }
             ensureBriefBackgroundTask(name: name)
@@ -1913,7 +1917,7 @@ private final class AetherBackgroundExecutionCoordinator {
         progressActivityCount = 0
         lastProgressUpdate = .distantPast
         lastProgressAdvance = .distantPast
-        if #unavailable(iOS 26.0, *) {
+        if #unavailable(iOS 26.0) {
             BackgroundAudioKeepAlive.shared.stop()
         }
         endBriefBackgroundTask()

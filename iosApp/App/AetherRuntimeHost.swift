@@ -9,6 +9,21 @@ import BackgroundTasks
 import AuthenticationServices
 import AetherShared
 
+// Xcode 16 SDK lacks iOS 26 BGContinuedProcessingTask. Under Swift 6.2+ the real
+// implementation compiles; older compilers get a no-op stub (silent-audio keep-alive
+// path still runs on iOS < 26 devices).
+protocol BGTaskProgressLike: AnyObject {
+    var progress: Progress { get }
+    var expirationHandler: (() -> Void)? { get set }
+    func setTaskCompleted(success: Bool)
+    func updateTitle(_ title: String, subtitle: String)
+}
+
+#if compiler(>=6.2)
+@available(iOS 26.0, *)
+extension BGContinuedProcessingTask: BGTaskProgressLike {}
+#endif
+
 private let alpineNetworkTraceURL = URL(string: "https://www.cloudflare.com/cdn-cgi/trace")!
 private let alpineOfficialRepository = "https://dl-cdn.alpinelinux.org/alpine"
 private let alpineChinaRepository = "https://mirrors.tuna.tsinghua.edu.cn/alpine"
@@ -1692,9 +1707,7 @@ private final class AetherBackgroundExecutionCoordinator {
                 BackgroundAudioKeepAlive.shared.start()
             }
             ensureBriefBackgroundTask(name: name)
-            if #available(iOS 26.0, *) {
-                ensureContinuedProcessingTask(name: name)
-            }
+            maybeEnsureContinuedProcessingTask(name: name)
             return identifier
         }
     }
@@ -1705,7 +1718,7 @@ private final class AetherBackgroundExecutionCoordinator {
             lease.detail = detail
             self.leases[identifier] = lease
             guard #available(iOS 26.0, *),
-                  let task = self.continuedTask as? BGContinuedProcessingTask else { return }
+                  let task = self.attachedContinuedTask() else { return }
             let now = Date()
             self.advanceProgress(task, now: now)
             guard now.timeIntervalSince(self.lastProgressUpdate) >= 1 else { return }
@@ -1730,6 +1743,7 @@ private final class AetherBackgroundExecutionCoordinator {
         }
     }
 
+#if compiler(>=6.2)
     @available(iOS 26.0, *)
     private func ensureContinuedProcessingTask(name: String) {
         let scheduler = BGTaskScheduler.shared
@@ -1814,15 +1828,14 @@ private final class AetherBackgroundExecutionCoordinator {
         timer.setEventHandler { [weak self] in
             guard let self,
                   !self.leases.isEmpty,
-                  let task = self.continuedTask as? BGContinuedProcessingTask else { return }
+                  let task = self.attachedContinuedTask() else { return }
             self.advanceProgress(task, now: Date())
         }
         progressTimer = timer
         timer.resume()
     }
 
-    @available(iOS 26.0, *)
-    private func advanceProgress(_ task: BGContinuedProcessingTask, now: Date) {
+    private func advanceProgress(_ task: BGTaskProgressLike, now: Date) {
         guard now.timeIntervalSince(lastProgressAdvance) >= 14 else { return }
         lastProgressAdvance = now
         // Agent turns have no knowable total work. Move an activity proxy toward, but never
@@ -1831,6 +1844,28 @@ private final class AetherBackgroundExecutionCoordinator {
         let increment = max(remaining / 120, 1)
         progressActivityCount = min(progressActivityCount + increment, 9_999)
         task.progress.completedUnitCount = progressActivityCount
+    }
+
+#endif
+
+#if compiler(>=6.2)
+    private func attachedContinuedTask() -> BGContinuedProcessingTask? {
+        if #available(iOS 26.0, *) {
+            return continuedTask as? BGContinuedProcessingTask
+        }
+        return nil
+    }
+#else
+    private func attachedContinuedTask() -> BGTaskProgressLike? {
+        return nil
+    }
+#endif
+
+    private func maybeEnsureContinuedProcessingTask(name: String) {
+        guard #available(iOS 26.0, *) else { return }
+        #if compiler(>=6.2)
+        ensureContinuedProcessingTask(name: name)
+        #endif
     }
 
     private func stopProgressHeartbeat() {
@@ -1857,7 +1892,7 @@ private final class AetherBackgroundExecutionCoordinator {
     }
 
     private func finishAll(success: Bool) {
-        if #available(iOS 26.0, *), let task = continuedTask as? BGContinuedProcessingTask {
+        if #available(iOS 26.0, *), let task = attachedContinuedTask() {
             task.expirationHandler = nil
             if success {
                 task.progress.completedUnitCount = task.progress.totalUnitCount

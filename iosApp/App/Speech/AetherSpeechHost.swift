@@ -20,7 +20,7 @@ final class AetherSpeechHost: NSObject, AVSpeechSynthesizerDelegate {
         let status = SFSpeechRecognizer.authorizationStatus()
         let micPermission = AVAudioSession.sharedInstance().recordPermission
         let available = SFSpeechRecognizer() != nil
-        listener.onResult(available && status != .denied && micPermission != .denied)
+        listener.onSuccess(value: available && status != .denied && micPermission != .denied)
     }
 
     func startDictation(listener: NativeSpeechListener) -> Bool {
@@ -128,6 +128,6 @@ final class AetherSpeechHost: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     func isSpeaking(listener: NativeBooleanResultListener) {
-        listener.onResult(synthesizer.isSpeaking)
+        listener.onSuccess(value: synthesizer.isSpeaking)
     }
 }

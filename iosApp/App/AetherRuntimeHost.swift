@@ -1835,16 +1835,6 @@ private final class AetherBackgroundExecutionCoordinator {
         timer.resume()
     }
 
-    private func advanceProgress(_ task: BGTaskProgressLike, now: Date) {
-        guard now.timeIntervalSince(lastProgressAdvance) >= 14 else { return }
-        lastProgressAdvance = now
-        // Agent turns have no knowable total work. Move an activity proxy toward, but never
-        // reach, completion so the scheduler can distinguish a long tool call from a stall.
-        let remaining = 9_999 - progressActivityCount
-        let increment = max(remaining / 120, 1)
-        progressActivityCount = min(progressActivityCount + increment, 9_999)
-        task.progress.completedUnitCount = progressActivityCount
-    }
 
 #endif
 
@@ -1866,6 +1856,17 @@ private final class AetherBackgroundExecutionCoordinator {
         #if compiler(>=6.2)
         ensureContinuedProcessingTask(name: name)
         #endif
+    }
+
+    private func advanceProgress(_ task: BGTaskProgressLike, now: Date) {
+        guard now.timeIntervalSince(lastProgressAdvance) >= 14 else { return }
+        lastProgressAdvance = now
+        // Agent turns have no knowable total work. Move an activity proxy toward, but never
+        // reach, completion so the scheduler can distinguish a long tool call from a stall.
+        let remaining = 9_999 - progressActivityCount
+        let increment = max(remaining / 120, 1)
+        progressActivityCount = min(progressActivityCount + increment, 9_999)
+        task.progress.completedUnitCount = progressActivityCount
     }
 
     private func stopProgressHeartbeat() {

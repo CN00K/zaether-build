@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ipa:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 150
     steps:
       - name: Checkout
@@ -15,10 +15,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Select Xcode 16
+      - name: Select Xcode 26 (falls back to 16)
         run: |
           ls -d /Applications/Xcode*.app || true
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -z "$X" ] && X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)
+          echo "Selecting $X"
+          sudo xcode-select -s "$X"
           xcodebuild -version
 
       - name: Set up JDK 17

@@ -1,5 +1,6 @@
 import AVFoundation
 import Speech
+import AetherShared
 
 /// Dictation (SFSpeechRecognizer) and TTS (AVSpeechSynthesizer) for Aether.
 /// Voice input inserts into the composer; TTS reads responses aloud.
@@ -18,7 +19,7 @@ final class AetherSpeechHost: NSObject, AVSpeechSynthesizerDelegate {
     func isDictationAvailable(listener: NativeBooleanResultListener) {
         let status = SFSpeechRecognizer.authorizationStatus()
         let micPermission = AVAudioSession.sharedInstance().recordPermission
-        let available = SFSpeechRecognizer.supportsOnDeviceRecognition || true
+        let available = SFSpeechRecognizer() != nil
         listener.onResult(available && status != .denied && micPermission != .denied)
     }
 

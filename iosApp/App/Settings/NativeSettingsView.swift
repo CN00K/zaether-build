@@ -1279,16 +1279,8 @@ private struct NativeProviderEditor: View {
 
     @ViewBuilder
     private func providerCardBackground(_ color: Color, minimumRadius: CGFloat) -> some View {
-        if #available(iOS 26.0, *) {
-            ConcentricRectangle(
-                corners: .concentric(minimum: .fixed(minimumRadius)),
-                isUniform: true
-            )
+        RoundedRectangle(cornerRadius: minimumRadius, style: .continuous)
             .fill(color)
-        } else {
-            RoundedRectangle(cornerRadius: minimumRadius, style: .continuous)
-                .fill(color)
-        }
     }
 
     private func wizardActionRow(

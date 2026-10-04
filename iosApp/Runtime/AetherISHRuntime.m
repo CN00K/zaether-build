@@ -114,19 +114,35 @@ static int AetherISHTTYInitialize(struct tty *tty) {
     return 0;
 }
 
+// Guards tty->data: the kernel task thread reads it from AetherISHTTYWrite
+// while processExited/AetherISHReleaseTerminal on the main thread can deallocate
+// the bridged process concurrently. Without this lock the write path can
+// dereference a released object (use-after-free).
+static os_unfair_lock aether_tty_data_lock = OS_UNFAIR_LOCK_INIT;
+
 static int AetherISHTTYWrite(struct tty *tty, const void *buffer, size_t length, bool blocking) {
+    os_unfair_lock_lock(&aether_tty_data_lock);
     AetherISHProcess *process = (__bridge AetherISHProcess *)tty->data;
-    if (!process || process.completed || length == 0) return (int)length;
+    if (process) CFRetain((__bridge CFTypeRef)process);
+    os_unfair_lock_unlock(&aether_tty_data_lock);
+
+    if (!process || process.completed || length == 0) {
+        if (process) CFRelease((__bridge CFTypeRef)process);
+        return (int)length;
+    }
     NSData *data = [NSData dataWithBytes:buffer length:length];
     AetherISHOutputBlock output = process.stdoutBlock;
+    CFRelease((__bridge CFTypeRef)process);
     dispatch_async(dispatch_get_main_queue(), ^{ output(data); });
     return (int)length;
 }
 
 static void AetherISHTTYCleanup(struct tty *tty) {
-    if (!tty->data) return;
+    os_unfair_lock_lock(&aether_tty_data_lock);
     AetherISHProcess *process = CFBridgingRelease(tty->data);
     tty->data = NULL;
+    os_unfair_lock_unlock(&aether_tty_data_lock);
+    if (!process) return;
     process.terminal = NULL;
 }
 

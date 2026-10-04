@@ -24,15 +24,19 @@ final class AetherSpeechHost: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     func startDictation(listener: NativeSpeechListener) -> Bool {
+        // Authorization callbacks arrive on an arbitrary queue; all listener
+        // callbacks and engine mutations must run on the main thread.
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
-            guard status == .authorized else {
-                listener.onError(message: "Speech recognition permission denied.")
-                return
-            }
-            AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
-                DispatchQueue.main.async {
-                    granted ? self?.beginDictation(listener: listener)
-                        : listener.onError(message: "Microphone permission denied.")
+            DispatchQueue.main.async {
+                guard status == .authorized else {
+                    listener.onError(message: "Speech recognition permission denied.")
+                    return
+                }
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    DispatchQueue.main.async {
+                        granted ? self?.beginDictation(listener: listener)
+                            : listener.onError(message: "Microphone permission denied.")
+                    }
                 }
             }
         }
@@ -69,22 +73,26 @@ final class AetherSpeechHost: NSObject, AVSpeechSynthesizerDelegate {
             try audioEngine.start()
 
             recognitionTask = recognizer.recognitionTask(with: recognitionRequest!) { [weak self] result, error in
-                guard let self else { return }
-                if let result {
-                    let text = result.bestTranscription.formattedString
-                    if result.isFinal {
-                        listener.onFinalText(text: text)
-                        self.stopDictation()
-                    } else {
-                        self.partialDebounce?.cancel()
-                        let work = DispatchWorkItem { listener.onPartialText(text: text) }
-                        self.partialDebounce = work
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
+                // Recognition callbacks arrive on a background queue; marshal
+                // state mutation and listener calls onto the main thread.
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if let result {
+                        let text = result.bestTranscription.formattedString
+                        if result.isFinal {
+                            listener.onFinalText(text: text)
+                            self.stopDictation()
+                        } else {
+                            self.partialDebounce?.cancel()
+                            let work = DispatchWorkItem { listener.onPartialText(text: text) }
+                            self.partialDebounce = work
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
+                        }
                     }
-                }
-                if error != nil {
-                    listener.onError(message: "Dictation failed.")
-                    self.stopDictation()
+                    if error != nil {
+                        listener.onError(message: "Dictation failed.")
+                        self.stopDictation()
+                    }
                 }
             }
         } catch {

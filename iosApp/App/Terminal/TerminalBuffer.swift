@@ -90,12 +90,18 @@ final class TerminalBuffer {
     }
 
     func moveCursorUp(_ n: Int) {
-        cursorRow = max(scrollTop, cursorRow - n)
+        // xterm semantics: CUU stops at the top margin only when the cursor is
+        // already inside the scroll region; otherwise it stops at row 0.
+        let limit = cursorRow >= scrollTop ? scrollTop : 0
+        cursorRow = max(limit, cursorRow - n)
         wrapPending = false
     }
 
     func moveCursorDown(_ n: Int) {
-        cursorRow = min(scrollBottom, cursorRow + n)
+        // CUD mirrors CUU: clamp to the bottom margin only from inside the
+        // region; from below it stops at the last screen row.
+        let limit = cursorRow <= scrollBottom ? scrollBottom : rows - 1
+        cursorRow = min(limit, cursorRow + n)
         wrapPending = false
     }
 

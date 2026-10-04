@@ -958,7 +958,8 @@ final class AetherRuntimeHost: NSObject, NativeRuntimeHost, UIDocumentPickerDele
                     .appendingPathComponent("AetherAlpineExports", isDirectory: true)
                     .appendingPathComponent(UUID().uuidString, isDirectory: true)
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                let name = URL(fileURLWithPath: path).lastPathComponent.replacingOccurrences(of: "/", with: "-")
+                var name = URL(fileURLWithPath: path).lastPathComponent.replacingOccurrences(of: "/", with: "-")
+                if name.isEmpty || name == "." || name == ".." { name = "file" }
                 let source = directory.appendingPathComponent(name, isDirectory: false)
                 do {
                     try runtime.exportFile(path, to: source)
@@ -1843,6 +1844,7 @@ private final class AetherBackgroundExecutionCoordinator {
 #endif
 
 #if compiler(>=6.2)
+    @available(iOS 26.0, *)
     private func attachedContinuedTask() -> BGContinuedProcessingTask? {
         if #available(iOS 26.0, *) {
             return continuedTask as? BGContinuedProcessingTask

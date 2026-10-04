@@ -7,6 +7,7 @@
 #include <netdb.h>
 #include <resolv.h>
 #include <signal.h>
+#include <pthread.h>
 #include <sqlite3.h>
 #include <string.h>
 #include <sys/stat.h>

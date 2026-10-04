@@ -107,7 +107,7 @@ targets:
     preBuildScripts:
       - name: Prepare Alpine and Pi Bridge
         script: |
-          "$SRCROOT/../scripts/prepare-ios-runtime.sh" "$SRCROOT/Resources/Runtime"
+          bash "$SRCROOT/../scripts/prepare-ios-runtime.sh" "$SRCROOT/Resources/Runtime"
         basedOnDependencyAnalysis: false
       - name: Build AetherShared
         script: |
@@ -119,7 +119,7 @@ targets:
         basedOnDependencyAnalysis: false
       - name: Build iSH ARM64 Runtime
         script: |
-          "$SRCROOT/../scripts/build-ios-ish-runtime.sh"
+          bash "$SRCROOT/../scripts/build-ios-ish-runtime.sh"
         basedOnDependencyAnalysis: false
     settings:
       base:

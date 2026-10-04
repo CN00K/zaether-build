@@ -118,13 +118,13 @@ static int AetherISHTTYInitialize(struct tty *tty) {
 // while processExited/AetherISHReleaseTerminal on the main thread can deallocate
 // the bridged process concurrently. Without this lock the write path can
 // dereference a released object (use-after-free).
-static os_unfair_lock aether_tty_data_lock = OS_UNFAIR_LOCK_INIT;
+static pthread_mutex_t aether_tty_data_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static int AetherISHTTYWrite(struct tty *tty, const void *buffer, size_t length, bool blocking) {
-    os_unfair_lock_lock(&aether_tty_data_lock);
+    pthread_mutex_lock(&aether_tty_data_lock);
     AetherISHProcess *process = (__bridge AetherISHProcess *)tty->data;
     if (process) CFRetain((__bridge CFTypeRef)process);
-    os_unfair_lock_unlock(&aether_tty_data_lock);
+    pthread_mutex_unlock(&aether_tty_data_lock);
 
     if (!process || process.completed || length == 0) {
         if (process) CFRelease((__bridge CFTypeRef)process);
@@ -138,10 +138,10 @@ static int AetherISHTTYWrite(struct tty *tty, const void *buffer, size_t length,
 }
 
 static void AetherISHTTYCleanup(struct tty *tty) {
-    os_unfair_lock_lock(&aether_tty_data_lock);
+    pthread_mutex_lock(&aether_tty_data_lock);
     AetherISHProcess *process = CFBridgingRelease(tty->data);
     tty->data = NULL;
-    os_unfair_lock_unlock(&aether_tty_data_lock);
+    pthread_mutex_unlock(&aether_tty_data_lock);
     if (!process) return;
     process.terminal = NULL;
 }

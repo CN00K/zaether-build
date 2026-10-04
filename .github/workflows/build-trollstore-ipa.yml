@@ -1,0 +1,75 @@
+name: TrollStore IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [trollstore-build]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trollstore-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+          cache-dependency-path: pi-bridge/package-lock.json
+
+      - name: Install iOS build tools
+        run: brew install llvm lld meson ninja xcodegen
+
+      - name: Bootstrap iOS project
+        run: scripts/bootstrap-ios.sh
+
+      - name: Build unsigned device app
+        run: |
+          set -euo pipefail
+          derived="${RUNNER_TEMP}/DerivedData"
+          xcodebuild \
+            -project iosApp/Aether.xcodeproj \
+            -scheme Aether \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          app_path="$(find "$derived/Build/Products" -maxdepth 2 -name '*.app' ! -name '*FileProvider*' | head -1)"
+          test -n "$app_path"
+          out_dir="${RUNNER_TEMP}/ipa-stage"
+          rm -rf "$out_dir"
+          mkdir -p "$out_dir/Payload"
+          cp -R "$app_path" "$out_dir/Payload/"
+          cd "$out_dir"
+          zip -qry "${RUNNER_TEMP}/Aether-TrollStore.ipa" Payload
+          ls -lh "${RUNNER_TEMP}/Aether-TrollStore.ipa"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: Aether-TrollStore
+          path: ${{ runner.temp }}/Aether-TrollStore.ipa
+          retention-days: 7

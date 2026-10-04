@@ -1,0 +1,88 @@
+package com.zhousl.aether.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.zhousl.aether.ui.theme.AetherOnSurface
+
+private val HeaderControlHalo = Color(0x18000000)
+
+@Composable
+fun HeaderCircleButton(
+    icon: ImageVector? = null,
+    iconPainter: Painter? = null,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: Dp = 44.dp,
+    iconSize: Dp = 22.dp,
+    containerColor: Color = Color.White,
+    iconTint: Color = AetherOnSurface,
+    showHalo: Boolean = true,
+) {
+    Box(modifier = modifier.size(size)) {
+        if (showHalo) {
+            // Radial-gradient halo instead of a live blur pass: visually
+            // equivalent soft drop shadow at a fraction of the GPU cost on
+            // older devices (A12-class).
+            Box(
+                modifier = Modifier.matchParentSize()
+                    .offset(y = 4.dp)
+                    .drawBehind {
+                        // this.size is the DrawScope size; the function's
+                        // `size` parameter (a Dp) would otherwise shadow it.
+                        val boxSize = this.size
+                        val radius = boxSize.minDimension / 2f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(HeaderControlHalo, HeaderControlHalo.copy(alpha = 0f)),
+                                center = Offset(boxSize.width / 2f, boxSize.height * 0.62f),
+                                radius = radius * 1.35f,
+                            ),
+                            radius = radius * 1.35f,
+                        )
+                    },
+            )
+        }
+        Box(
+            modifier = Modifier.matchParentSize()
+                .clip(CircleShape)
+                .background(if (enabled) containerColor else containerColor.copy(alpha = 0.55f))
+                .clickable(enabled = enabled, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                iconPainter != null -> Icon(
+                    painter = iconPainter,
+                    contentDescription = contentDescription,
+                    tint = if (enabled) iconTint else iconTint.copy(alpha = 0.4f),
+                    modifier = Modifier.size(iconSize),
+                )
+
+                icon != null -> Icon(
+                    imageVector = icon,
+                    contentDescription = contentDescription,
+                    tint = if (enabled) iconTint else iconTint.copy(alpha = 0.4f),
+                    modifier = Modifier.size(iconSize),
+                )
+            }
+        }
+    }
+}

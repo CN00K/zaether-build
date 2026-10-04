@@ -48,14 +48,14 @@ jobs:
         working-directory: iosApp
 
       - name: Show schemes
-        run: xcodebuild -project Aether.xcodeproj -list
+        run: xcodebuild -project Zaether.xcodeproj -list
         working-directory: iosApp
 
       - name: Build app (unsigned, device)
         run: |
           set -o pipefail
           xcodebuild \
-            -project Aether.xcodeproj \
+            -project Zaether.xcodeproj \
             -scheme Aether \
             -configuration Release \
             -sdk iphoneos \

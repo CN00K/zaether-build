@@ -201,7 +201,7 @@ jobs:
       - name: Build iPhone simulator app
         run: |
           xcodebuild \
-            -project iosApp/Aether.xcodeproj \
+            -project iosApp/Zaether.xcodeproj \
             -scheme Aether \
             -configuration Debug \
             -sdk iphonesimulator \

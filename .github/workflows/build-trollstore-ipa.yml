@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
           derived="${RUNNER_TEMP}/DerivedData"
           xcodebuild \
-            -project iosApp/Aether.xcodeproj \
+            -project iosApp/Zaether.xcodeproj \
             -scheme Aether \
             -configuration Debug \
             -sdk iphoneos \
